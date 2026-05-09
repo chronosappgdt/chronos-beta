@@ -1543,13 +1543,9 @@ let triggeredNotifications = new Set();
 function loadDB(){
   try{
     const raw = localStorage.getItem(DB_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
-      // Migrar: agregar testers nuevos si faltan en localStorage existente
-      return ensureBetaTesters(parsed);
-    }
+    if(raw) return JSON.parse(raw);
   }catch(e){}
-  // Primera carga: inicializar con cuenta del propietario + testers precargados
+  // Primera carga: inicializar con cuenta del propietario precargada
   return initialDB();
 }
 function initialDB(){
@@ -1577,69 +1573,11 @@ function initialDB(){
     default24h: true,
     defaultMorning: true
   };
-
-  // ---------- Beta testers precargados (mayo 2026) ----------
-  // Hashes generados con hashPass(). Cada tester puede cambiar su contraseña
-  // desde "Mi perfil". Vigencia: hasta el 10 de junio de 2026.
-  const BETA_CREATED_AT = Date.parse('2026-05-08T00:00:00');
-  const betaTesters = [
-    { id:'tester_margarita_aguilera', username:'margarita.aguilera', fullName:'Margarita Delfina Aguilera Cofré',     email:'m.aguilera.cofre@gmail.com',     password:'h_tkk4qo_14', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_alvaro_brunel',      username:'alvaro.brunel',      fullName:'Álvaro Brunel Aravena',                 email:'alvaro.brunel@gmail.com',        password:'h_8qmy5a_12', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_laura_corral',       username:'laura.corral',       fullName:'Laura Rosa Corral Contreras',           email:'lauracorral2021@gmail.com',      password:'h_gg698s_12', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_herbert_villanueva', username:'herbert.villanueva', fullName:'Herbert Antonio Villanueva Morales',    email:'herbertvilmor@gmail.com',        password:'h_lrrk7g_16', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_fernanda_cordova',   username:'fernanda.cordova',   fullName:'Fernanda Katherine Córdova Covarrubias',email:'allegra38@hotmail.com',          password:'h_ub2zjb_13', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_yerko_serey',        username:'yerko.serey',        fullName:'Yerko Andrés Serey Parra',              email:'andyserey1708@gmail.com',        password:'h_szjo0k_11', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_paula_torres',       username:'paula.torres',       fullName:'Paula Torres Díaz',                     email:'ed.parv.paula.torres@gmail.com', password:'h_7zkgza_12', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_doraluz_donoso',     username:'doraluz.donoso',     fullName:'Doraluz Sofía Donoso Morales',          email:'dsdonosom@gmail.com',            password:'h_fr3qxp_12', phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false },
-    { id:'tester_cristian_sarmiento', username:'cristian.sarmiento', fullName:'Cristián Andrés Sarmiento Cisterna',    email:'c.sarmiento@fullmadera.cl',      password:'h_niosy_15',  phone:'', role:'Beta Tester', company:'Prueba CHRONOS', photo:null, createdAt:BETA_CREATED_AT, isOwner:false }
-  ];
-
-  const settings = { [ownerId]: ownerSettings };
-  for(const t of betaTesters){
-    settings[t.id] = {
-      notifyEmail: t.email,
-      browserNotifications: true,
-      dailySummary: true,
-      weekendNotifications: false,
-      default24h: true,
-      defaultMorning: true
-    };
-  }
-
   return {
-    users: [ownerUser, ...betaTesters],
+    users: [ownerUser],
     activities: [],
-    settings
+    settings: { [ownerId]: ownerSettings }
   };
-}
-
-// ---------- Migración: asegurar testers en DBs ya existentes ----------
-// Si el localStorage del usuario ya estaba inicializado (sin testers),
-// esta función inyecta los testers que falten sin tocar a los existentes.
-// Esto es importante porque, sin esto, agregar testers a initialDB() solo
-// funciona para navegadores que NO han abierto CHRONOS antes.
-function ensureBetaTesters(db){
-  if(!db || !Array.isArray(db.users)) return db;
-  const fresh = initialDB();
-  const existingUsernames = new Set(db.users.map(u => u.username));
-  let added = 0;
-  for(const t of fresh.users){
-    if(t.isOwner) continue;
-    if(!existingUsernames.has(t.username)){
-      db.users.push(t);
-      // Asegurar también settings del nuevo tester
-      if(!db.settings) db.settings = {};
-      if(!db.settings[t.id] && fresh.settings[t.id]){
-        db.settings[t.id] = fresh.settings[t.id];
-      }
-      added++;
-    }
-  }
-  if(added > 0){
-    console.log(`✓ Migración: ${added} beta tester(s) agregados al DB local`);
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-  }
-  return db;
 }
 function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function loadSession(){
